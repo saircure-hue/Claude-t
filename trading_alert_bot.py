@@ -30,7 +30,7 @@ EMAIL_APP_PASSWORD = "soeqmdsupbsrsvpv"
 EMAIL_TO = "saircure@gmail.com"
 
 SYMBOLS = {
-    "XAUUSD": "XAUUSD=X",   # Oro spot (proxy de XAUUSD)
+    "XAUUSD": "XAU=X",   # Oro spot (proxy de XAUUSD)
     "EURUSD": "EURUSD=X"
 }
 
@@ -148,4 +148,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
