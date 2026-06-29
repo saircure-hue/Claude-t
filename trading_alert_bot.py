@@ -6,11 +6,12 @@ Envía alertas a Telegram, NO ejecuta órdenes automáticamente.
 REQUISITOS:
 pip install yfinance pandas requests --break-system-packages
 
-CONFIGURACIÓN CORREO (Gmail):
-1. Ve a https://myaccount.google.com/apppasswords (necesitas verificación en 2 pasos activada)
-2. Crea una contraseña de aplicación, te da un código de 16 letras
-3. Pega tu correo en EMAIL_FROM y el código (sin espacios) en EMAIL_APP_PASSWORD
-4. Pega el correo donde quieres recibir alertas en EMAIL_TO (puede ser el mismo)
+CONFIGURACIÓN DE NOTIFICACIONES (ntfy.sh - gratis, sin registro):
+1. Descarga la app "ntfy" (disponible en App Store / Play Store)
+2. Abre la app, toca "+" para suscribirte a un "topic" (canal)
+3. Ponle un nombre ÚNICO y secreto, ej: "sair-trading-alerts-9284"
+4. Pega ese mismo nombre en NTFY_TOPIC abajo
+5. Listo, las alertas llegan como notificación push a tu celular
 
 CÓMO CORRERLO 24/7 GRATIS:
 - Sube este archivo a Railway.app o Render.com (plan free)
@@ -19,15 +20,12 @@ CÓMO CORRERLO 24/7 GRATIS:
 
 import yfinance as yf
 import pandas as pd
-import smtplib
-from email.mime.text import MIMEText
+import requests
 import time
 from datetime import datetime
 
 # ============ CONFIGURACIÓN ============
-EMAIL_FROM = "saircure@gmail.com"
-EMAIL_APP_PASSWORD = "soeqmdsupbsrsvpv"
-EMAIL_TO = "saircure@gmail.com"
+NTFY_TOPIC = "sair-trading-alerts-9284"
 
 SYMBOLS = {
     "XAUUSD": "XAU=X",   # Oro spot (proxy de XAUUSD)
@@ -47,22 +45,16 @@ LOOKBACK = "5d"    # historial a descargar
 # ============ FUNCIONES ============
 
 def send_telegram(message):
-    """Envía la alerta por correo (se mantiene el nombre para no romper el resto del código)."""
-    if "PEGA_TU" in EMAIL_APP_PASSWORD:
-        print("[AVISO] No configuraste la contraseña de aplicación de Gmail. Mensaje no enviado:")
-        print(message)
-        return
+    """Envía la alerta como notificación push vía ntfy.sh (nombre mantenido por compatibilidad)."""
     try:
-        msg = MIMEText(message)
-        msg["Subject"] = "🔔 Alerta de Trading Bot"
-        msg["From"] = EMAIL_FROM
-        msg["To"] = EMAIL_TO
-
-        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
-            server.login(EMAIL_FROM, EMAIL_APP_PASSWORD)
-            server.send_message(msg)
+        requests.post(
+            f"https://ntfy.sh/{NTFY_TOPIC}",
+            data=message.encode("utf-8"),
+            headers={"Title": "Alerta de Trading Bot"},
+            timeout=10
+        )
     except Exception as e:
-        print(f"Error enviando correo: {e}")
+        print(f"Error enviando notificación: {e}")
 
 
 def calculate_rsi(series, period=14):
