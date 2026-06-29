@@ -26,11 +26,11 @@ from datetime import datetime
 
 # ============ CONFIGURACIÓN ============
 EMAIL_FROM = "saircure@gmail.com"
-EMAIL_APP_PASSWORD = "kudbaoemysgxpjxe"
+EMAIL_APP_PASSWORD = "soeqmdsupbsrsvpv"
 EMAIL_TO = "saircure@gmail.com"
 
 SYMBOLS = {
-    "XAUUSD": "GC=F",   # Oro futuros (proxy de XAUUSD)
+    "XAUUSD": "XAUUSD=X",   # Oro spot (proxy de XAUUSD)
     "EURUSD": "EURUSD=X"
 }
 
@@ -73,10 +73,22 @@ def calculate_rsi(series, period=14):
     return 100 - (100 / (1 + rs))
 
 
-def get_data(ticker):
-    df = yf.download(ticker, period=LOOKBACK, interval=INTERVAL, progress=False)
-    if df.empty:
+def get_data(ticker, retries=3):
+    for attempt in range(retries):
+        try:
+            df = yf.download(ticker, period=LOOKBACK, interval=INTERVAL, progress=False, auto_adjust=True)
+            if df is not None and not df.empty:
+                break
+        except Exception:
+            df = None
+        time.sleep(5)
+    else:
         return None
+    if df is None or df.empty:
+        return None
+    # yfinance a veces devuelve columnas multi-nivel; las aplanamos
+    if isinstance(df.columns, pd.MultiIndex):
+        df.columns = df.columns.get_level_values(0)
     df["EMA_fast"] = df["Close"].ewm(span=EMA_FAST, adjust=False).mean()
     df["EMA_slow"] = df["Close"].ewm(span=EMA_SLOW, adjust=False).mean()
     df["RSI"] = calculate_rsi(df["Close"], RSI_PERIOD)
@@ -90,11 +102,16 @@ def check_signal(df, name):
     prev = df.iloc[-2]
     last = df.iloc[-1]
 
-    cross_up = prev["EMA_fast"] <= prev["EMA_slow"] and last["EMA_fast"] > last["EMA_slow"]
-    cross_down = prev["EMA_fast"] >= prev["EMA_slow"] and last["EMA_fast"] < last["EMA_slow"]
+    prev_fast = float(prev["EMA_fast"])
+    prev_slow = float(prev["EMA_slow"])
+    last_fast = float(last["EMA_fast"])
+    last_slow = float(last["EMA_slow"])
 
-    rsi = last["RSI"]
-    price = last["Close"]
+    cross_up = prev_fast <= prev_slow and last_fast > last_slow
+    cross_down = prev_fast >= prev_slow and last_fast < last_slow
+
+    rsi = float(last["RSI"])
+    price = float(last["Close"])
 
     if cross_up:
         nota = " (RSI sobrevendido, señal más fuerte)" if rsi < RSI_OVERSOLD else ""
